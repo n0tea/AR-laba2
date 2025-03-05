@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.ARSubsystems;
 
@@ -14,34 +15,46 @@ namespace UnityEngine.XR.ARFoundation.Samples
     [RequireComponent(typeof(ARRaycastManager))]
     public class PlaceOnPlane : PressInputBase
     {
-        [SerializeField]
-        [Tooltip("Instantiates this prefab on a plane at the touch location.")]
-        GameObject m_PlacedPrefab;
+        
+        //private ARObjectData arObjectData; // Ссылка на ScriptableObject пробовал через скриптабле
+        //[SerializeField]
+        //[Tooltip("Instantiates this prefab on a plane at the touch location.")]
+        //GameObject m_PlacedPrefab;
 
         /// <summary>
         /// The prefab to instantiate on touch.
         /// </summary>
-        public GameObject placedPrefab
+        /*public GameObject placedPrefab
         {
             get { return m_PlacedPrefab; }
             set { m_PlacedPrefab = value; }
-        }
+        }*/
 
         /// <summary>
         /// The object instantiated as a result of a successful raycast intersection with a plane.
         /// </summary>
-        public GameObject spawnedObject { get; private set; }
+        private GameObject spawnedObject; //{ get; private set; }
+        //private GameObject currentPrefab; // Текущий выбранный префаб не нужно, теперь это в ObjectSelector
 
         bool m_Pressed;
 
         protected override void Awake()
         {
+
             base.Awake();
             m_RaycastManager = GetComponent<ARRaycastManager>();
+            //currentPrefab = ObjectSelector.SelectedPrefab;
+            //placedPrefab = currentPrefab;
+
+            //Debug.Log($"artn AR {ObjectSelector.SelectedPrefab.name} Selected.");
         }
 
         void Update()
         {
+            if (EventSystem.current.IsPointerOverGameObject())
+            {
+                return; // Если да, игнорируем взаимодействие со сценой
+            }
 
             if (Pointer.current == null || m_Pressed == false)
                 return;
@@ -56,11 +69,16 @@ namespace UnityEngine.XR.ARFoundation.Samples
 
                 if (spawnedObject == null)
                 {
-                    spawnedObject = Instantiate(m_PlacedPrefab, hitPose.position, hitPose.rotation);
+                    //spawnedObject = Instantiate(currentPrefab/*ObjectSelector.SelectedPrefab*/, hitPose.position, hitPose.rotation);
+                    spawnedObject = ObjectSelector.currentObject;
+                    spawnedObject.SetActive(true);
+                    spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation); 
+                    // SetLocalPositionAndRotation - зачем
                 }
                 else
                 {
-                    spawnedObject.transform.position = hitPose.position;
+
+                    spawnedObject.transform.position = hitPose.position;                
                 }
             }
         }
@@ -74,3 +92,4 @@ namespace UnityEngine.XR.ARFoundation.Samples
         ARRaycastManager m_RaycastManager;
     }
 }
+
