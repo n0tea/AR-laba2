@@ -48,7 +48,7 @@ public class UIObjectSelector : MonoBehaviour
 
     private void SelectFigure(GameObject prefab)
     {
-        ChangesController.Instance.SetSelectedObject(prefab);
+        AppController.Instance.SetSelectedObject(prefab);
         UpdateButtonColors(prefab);
     }
 

@@ -1,122 +1,123 @@
-using System.Collections.Generic;
+п»їusing UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
-using static ChangesController;
+using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using UnityEngine.XR.ARFoundation.Samples;
 
-namespace UnityEngine.XR.ARFoundation.Samples
+[RequireComponent(typeof(ARRaycastManager))]
+public class PlaceOnPlane : PressInputBase
 {
-    /// <summary>
-    /// Listens for touch events and performs an AR raycast from the screen touch point.
-    /// AR raycasts will only hit detected trackables like feature points and planes.
-    ///
-    /// If a raycast hits a trackable, the <see cref="placedPrefab"/> is instantiated
-    /// and moved to the hit position.
-    /// </summary>
-    [RequireComponent(typeof(ARRaycastManager))]
-    public class PlaceOnPlane : PressInputBase
+    private GameObject spawnedObject;
+    private ARRaycastManager m_RaycastManager;
+    private Transform arSceneRoot; // Р РѕРґРёС‚РµР»СЊСЃРєРёР№ РѕР±СЉРµРєС‚ РІ ARScene
+
+    bool m_Pressed;
+
+    protected override void Awake()
     {
-        
-        //private ARObjectData arObjectData; // Ссылка на ScriptableObject пробовал через скриптабле
-        //[SerializeField]
-        //[Tooltip("Instantiates this prefab on a plane at the touch location.")]
-        //GameObject m_PlacedPrefab;
+        base.Awake();
+        m_RaycastManager = GetComponent<ARRaycastManager>();
 
-        /// <summary>
-        /// The prefab to instantiate on touch.
-        /// </summary>
-        /*public GameObject placedPrefab
+        // РќР°С…РѕРґРёРј РєРѕСЂРЅРµРІРѕР№ РѕР±СЉРµРєС‚ AR СЃС†РµРЅС‹
+        FindARSceneRoot();
+    }
+
+    private void FindARSceneRoot()
+    {
+        Scene arScene = SceneManager.GetSceneByName("ARModule");
+        if (arScene.IsValid())
         {
-            get { return m_PlacedPrefab; }
-            set { m_PlacedPrefab = value; }
-        }*/
+            GameObject[] rootObjects = arScene.GetRootGameObjects();
+            if (rootObjects.Length > 0)
+            {
+                // РС‰РµРј РѕР±СЉРµРєС‚ СЃ С‚РµРіРѕРј "ARRoot" РёР»Рё СЃРѕР·РґР°С‘Рј РЅРѕРІС‹Р№
+                foreach (var obj in rootObjects)
+                {
+                    if (obj.CompareTag("ARRoot"))
+                    {
+                        arSceneRoot = obj.transform;
+                        return;
+                    }
+                }
 
-        /// <summary>
-        /// The object instantiated as a result of a successful raycast intersection with a plane.
-        /// </summary>
-        private GameObject spawnedObject; //{ get; private set; }
-        //private GameObject currentPrefab; // Текущий выбранный префаб не нужно, теперь это в ObjectSelector
+                // Р•СЃР»Рё РЅРµ РЅР°С€Р»Рё - СЃРѕР·РґР°С‘Рј РЅРѕРІС‹Р№
+                GameObject root = new GameObject("ARRoot");
+                SceneManager.MoveGameObjectToScene(root, arScene);
+                root.tag = "ARRoot";
+                arSceneRoot = root.transform;
+            }
+        }
+    }
 
-        bool m_Pressed;
+    private void OnEnable()
+    {
+        base.OnEnable();
+        AppController.Instance.OnObjectChanged += HandleObjectChanged;
+        SceneManager.sceneLoaded += OnARSceneLoaded;
+    }
 
-        protected override void Awake()
+    private void OnDisable()
+    {
+        base.OnDisable();
+        AppController.Instance.OnObjectChanged -= HandleObjectChanged;
+        SceneManager.sceneLoaded -= OnARSceneLoaded;
+    }
+
+    private void OnARSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "ARModule")
         {
+            FindARSceneRoot();
+        }
+    }
 
-            base.Awake();
-            m_RaycastManager = GetComponent<ARRaycastManager>();
-            //currentPrefab = ObjectSelector.SelectedPrefab;
-            //placedPrefab = currentPrefab;
-
-            //Debug.Log($"artn AR {ObjectSelector.SelectedPrefab.name} Selected.");
+    private void HandleObjectChanged(GameObject prefab)
+    {
+        if (spawnedObject != null)
+        {
+            Destroy(spawnedObject);
         }
 
-        private void OnEnable()
+        if (prefab != null && arSceneRoot != null)
         {
-            ChangesController.Instance.OnObjectChanged += HandleObjectChanged;
+            spawnedObject = Instantiate(prefab, arSceneRoot);
+            spawnedObject.SetActive(false);
+        }
+    }
+
+    void Update()
+    {
+        if (EventSystem.current.IsPointerOverGameObject() ||
+            Pointer.current == null ||
+            !m_Pressed ||
+            arSceneRoot == null)
+        {
+            return;
         }
 
-        private void HandleObjectChanged(GameObject prefab)
+        var touchPosition = Pointer.current.position.ReadValue();
+
+        if (m_RaycastManager.Raycast(touchPosition, s_Hits, TrackableType.PlaneWithinPolygon))
         {
-            // Уничтожаем предыдущий объект, если он есть
+            var hitPose = s_Hits[0].pose;
+
             if (spawnedObject != null)
             {
-                Destroy(spawnedObject);
-            }
-
-            // Создаем новый объект, но пока не активируем и не размещаем
-            if (prefab != null)
-            {
-                spawnedObject = Instantiate(prefab);
-                spawnedObject.SetActive(false); // Делаем невидимым до размещения
-            }
-        }
-        void Update()
-        {
-            /*if (EventSystem.current.IsPointerOverGameObject())
-            {
-                return; // Если да, игнорируем взаимодействие со сценой, трогаем только UI
-            }*/
-            Debug.Log(m_Pressed);
-            if (Pointer.current == null || m_Pressed == false)
-                return;
-
-            var touchPosition = Pointer.current.position.ReadValue();
-
-            if (m_RaycastManager.Raycast(touchPosition, s_Hits, TrackableType.PlaneWithinPolygon))
-            {
-                // Raycast hits are sorted by distance, so the first one
-                // will be the closest hit.
-                var hitPose = s_Hits[0].pose;
-
-                if (spawnedObject != null)
+                if (!spawnedObject.activeSelf)
                 {
-                    //spawnedObject = Instantiate(currentPrefab/*ObjectSelector.SelectedPrefab*/, hitPose.position, hitPose.rotation);
-                    //spawnedObject = ObjectSelector.currentObject;
-                    //spawnedObject.SetActive(true);
-                    //spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation); 
-                    // SetLocalPositionAndRotation - зачем
-                    if (!spawnedObject.activeSelf)
-                    {
-                        spawnedObject.SetActive(true); // Активируем при первом размещении
-                    }
-
-                    spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
+                    spawnedObject.SetActive(true);
                 }
-                /*else
-                {
 
-                    spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
-                }*/
+                spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
             }
         }
-
-        protected override void OnPress(Vector3 position) => m_Pressed = true;
-
-        protected override void OnPressCancel() => m_Pressed = false;
-
-        static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
-
-        ARRaycastManager m_RaycastManager;
     }
-}
 
+    protected override void OnPress(Vector3 position) => m_Pressed = true;
+    protected override void OnPressCancel() => m_Pressed = false;
+
+    static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
+}
