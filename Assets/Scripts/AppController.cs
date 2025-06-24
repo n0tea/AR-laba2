@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR.Management;
+using Mono.Cecil;
 
 public class AppController : MonoBehaviour
 {
@@ -9,9 +10,10 @@ public class AppController : MonoBehaviour
 
     public event Action<GameObject> OnObjectChanged;
     public event Action<ViewMode> OnViewModeChanged;
-
+    public event Action<bool> OnVisualChanged;
     public GameObject SelectedPrefab { get; private set; }
     public ViewMode CurrentViewMode { get; private set; } = ViewMode.Mode3D;
+    private bool _currentVisualState = true;
 
     public enum ViewMode { Mode3D, AR }
 
@@ -26,7 +28,13 @@ public class AppController : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
-
+    public bool GetCurrentVisualState() => _currentVisualState;
+    public void SetVisual(bool state)
+    {
+        if (state != _currentVisualState)
+            _currentVisualState = state;
+            OnVisualChanged?.Invoke(state);
+    }
     public void SetViewMode(ViewMode mode)
     {
         if (CurrentViewMode == mode)

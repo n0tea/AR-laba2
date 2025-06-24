@@ -71,6 +71,8 @@ public class PlaceOnPlane : PressInputBase
         if (scene.name == "ARModule")
         {
             FindARSceneRoot();
+            spawnedObject = Instantiate(AppController.Instance.SelectedPrefab, arSceneRoot);
+            spawnedObject.SetActive(false);
         }
     }
 
