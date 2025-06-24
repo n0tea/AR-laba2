@@ -10,10 +10,14 @@ using UnityEngine.XR.ARFoundation.Samples;
 [RequireComponent(typeof(ARRaycastManager))]
 public class PlaceOnPlane : PressInputBase
 {
-    private GameObject spawnedObject;
+    public Camera _camera;
+    private GameObject selectedPrefab;
+    private GameObject currentObject;
     private ARRaycastManager m_RaycastManager;
     private Transform arSceneRoot; // Родительский объект в ARScene
+    private List<GameObject> placedObjects = new List<GameObject>();
 
+    private bool isPlacing = false;
     bool m_Pressed;
 
     protected override void Awake()
@@ -22,7 +26,7 @@ public class PlaceOnPlane : PressInputBase
         m_RaycastManager = GetComponent<ARRaycastManager>();
 
         // Находим корневой объект AR сцены
-        FindARSceneRoot();
+        //FindARSceneRoot();
     }
 
     private void FindARSceneRoot()
@@ -42,8 +46,6 @@ public class PlaceOnPlane : PressInputBase
                         return;
                     }
                 }
-
-                // Если не нашли - создаём новый
                 GameObject root = new GameObject("ARRoot");
                 SceneManager.MoveGameObjectToScene(root, arScene);
                 root.tag = "ARRoot";
@@ -71,23 +73,25 @@ public class PlaceOnPlane : PressInputBase
         if (scene.name == "ARModule")
         {
             FindARSceneRoot();
-            spawnedObject = Instantiate(AppController.Instance.SelectedPrefab, arSceneRoot);
-            spawnedObject.SetActive(false);
+            selectedPrefab = AppController.Instance.SelectedPrefab;
+            /*selectedObject = Instantiate(AppController.Instance.SelectedPrefab, arSceneRoot);
+            selectedObject.SetActive(false);*/
         }
     }
 
     private void HandleObjectChanged(GameObject prefab)
     {
-        if (spawnedObject != null)
+        /*if (selectedObject != null)
         {
-            Destroy(spawnedObject);
+            Destroy(selectedObject);
         }
 
         if (prefab != null && arSceneRoot != null)
         {
-            spawnedObject = Instantiate(prefab, arSceneRoot);
-            spawnedObject.SetActive(false);
-        }
+            selectedObject = Instantiate(prefab, arSceneRoot);
+            selectedObject.SetActive(false);
+        }*/
+        selectedPrefab = prefab;
     }
 
     void Update()
@@ -95,31 +99,74 @@ public class PlaceOnPlane : PressInputBase
         if (EventSystem.current.IsPointerOverGameObject() ||
             Pointer.current == null ||
             !m_Pressed ||
-            arSceneRoot == null)
+            arSceneRoot == null ||
+            selectedPrefab == null)
         {
             return;
         }
 
         var touchPosition = Pointer.current.position.ReadValue();
+        if (!isPlacing  )
+        {
+            Ray ray = _camera.ScreenPointToRay(touchPosition);
+            RaycastHit hit;
+
+            Debug.DrawRay(ray.origin, ray.direction * 100, Color.red, 2f);
+
+            if (Physics.Raycast(ray, out hit))
+            {
+                Debug.Log("Hit object: " + hit.collider.name);
+                GameObject hitObject = hit.collider.transform.parent.gameObject;
+                //GameObject child = hit.collider.gameObject;
+                if (placedObjects.Contains(hitObject))
+                {
+                    currentObject = hitObject;
+                    
+                    isPlacing = true;
+                    return;
+                }
+            }
+        }
 
         if (m_RaycastManager.Raycast(touchPosition, s_Hits, TrackableType.PlaneWithinPolygon))
         {
             var hitPose = s_Hits[0].pose;
 
-            if (spawnedObject != null)
+            if (!isPlacing)
             {
-                if (!spawnedObject.activeSelf)
+                currentObject = Instantiate(selectedPrefab, hitPose.position, hitPose.rotation, arSceneRoot);
+                placedObjects.Add(currentObject);
+                isPlacing = true;
+            }
+            else
+            {
+                var outline = currentObject.GetComponentInChildren<Outline>();
+                outline.enabled = true;
+                currentObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
+            }
+            /*if (selectedObject != null)
+            {
+                if (!selectedObject.activeSelf)
                 {
-                    spawnedObject.SetActive(true);
+                    selectedObject.SetActive(true);
                 }
 
-                spawnedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
-            }
+                selectedObject.transform.SetPositionAndRotation(hitPose.position, hitPose.rotation);
+            }*/
         }
     }
 
     protected override void OnPress(Vector3 position) => m_Pressed = true;
-    protected override void OnPressCancel() => m_Pressed = false;
+    protected override void OnPressCancel() {
+        m_Pressed = false;
+        isPlacing = false;
+        if (currentObject != null)
+        {
+            var outline = currentObject.GetComponentInChildren<Outline>();
+            outline.enabled = false;
+        }
+    }
+    
 
     static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
 }

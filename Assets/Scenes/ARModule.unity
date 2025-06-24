@@ -287,6 +287,7 @@ GameObject:
   - component: {fileID: 403827782}
   - component: {fileID: 403827781}
   - component: {fileID: 403827780}
+  - component: {fileID: 403827784}
   m_Layer: 0
   m_Name: XR Origin
   m_TagString: Untagged
@@ -339,6 +340,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68dad5217df9f894b90f3c97a2216144, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _camera: {fileID: 489072517}
 --- !u!114 &403827781
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -388,6 +390,20 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_PointCloudPrefab: {fileID: 6523312547580130390, guid: cedf0b823256baa46be2c86c3f18ae96, type: 3}
+--- !u!114 &403827784
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 403827777}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7210b6020892b9e468f9f77b4a46960c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _longPressDuration: 0.5
+  _deleteButtonPrefab: {fileID: 5811915134758465809, guid: 0dfeb24d7ca4495458a135f9b3581afe, type: 3}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
